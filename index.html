@@ -1,167 +1,505 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" data-tema="noche">
 <head>
 <meta charset="utf-8">
 <meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b1219">
 <title>Oficina de agentes</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Pixelify+Sans:wght@400;600;700&display=swap">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' fill='%230b1219'/%3E%3Crect x='3' y='2' width='10' height='14' fill='%2333495e'/%3E%3Crect x='5' y='4' width='2' height='2' fill='%23ffcf4a'/%3E%3Crect x='9' y='4' width='2' height='2' fill='%23ffcf4a'/%3E%3Crect x='5' y='8' width='2' height='2' fill='%237fb4ff'/%3E%3Crect x='9' y='8' width='2' height='2' fill='%23ffcf4a'/%3E%3Crect x='7' y='12' width='2' height='4' fill='%23ffcf4a'/%3E%3C/svg%3E">
 <style>
-body{margin:0}
-/* Concepto: planta de oficina vista de frente, con una sala por área. Cada agente es un trabajador en su mesa y el panel lateral es su ficha. Look de videojuego fijo (sin modo claro) a propósito. */
+/* Concepto: oficina en pixel art vista de frente. Se entra por una pantalla de menú de videojuego (edificio de noche
+   con ventanas que parpadean) y dentro hay una sala por área, con un trabajador por agente.
+   Sin fuentes ni librerías externas: el título en píxeles se dibuja con SVG desde el propio script.
+   Las animaciones usan solo transform y opacity; con "reducir movimiento" se quitan todas. */
 :root{
-  --bg:#101b25;
-  --wall:#0b131b;
-  --floor-a:#1b2f3e;
-  --floor-b:#1f3647;
+  --bg:#0b1219;
+  --plate:#0b131b;
+  --panel:#142231;
   --line:#2c4558;
-  --panel:#162533;
   --ink:#e9eff3;
-  --muted:#93a8b8;
+  --muted:#9db1c1;
   --accent:#7fb4ff;
+  --gold:#ffcf4a;
   --ok:#4cc38a;
   --warn:#f2b14a;
-  --off:#7d8c99;
+  --off:#8d9ba8;
   --wood-top:#c58a4e;
   --wood:#a8703c;
   --wood-dark:#7d5028;
-  --display:"Pixelify Sans","Courier New",monospace;
-  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+  --display:ui-monospace,"Cascadia Mono","Consolas","SF Mono","Menlo","DejaVu Sans Mono",monospace;
+  --body:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   color-scheme:dark;
 }
-*{box-sizing:border-box}
+:root[data-tema="dia"]{--bg:#172b3d}
+
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
 body{
-  background:var(--bg);
-  color:var(--ink);
+  margin:0;min-height:100vh;
+  background:var(--bg);color:var(--ink);
   font:15px/1.55 var(--body);
-  padding-inline:16px;
-  padding-block:28px 40px;
+  overflow-x:clip;
+  transition:background-color .6s ease;
 }
-.wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+body.bloqueado{overflow:hidden}
+button{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 
-/* Cabecera */
-header{display:flex;flex-direction:column;gap:10px}
-h1{margin:0;font:700 clamp(30px,6vw,44px)/1.05 var(--display);letter-spacing:.01em;text-wrap:balance}
-.lead{margin:0;max-width:60ch;color:var(--muted)}
-.counts{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
-.chip{display:inline-flex;align-items:center;gap:8px;padding:4px 10px;border:2px solid var(--line);background:var(--wall);font:600 13px/1.4 var(--display);letter-spacing:.04em}
-.chip b{font-variant-numeric:tabular-nums}
-
-/* Escenario */
-.stage{display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:20px;align-items:start}
-.office{display:flex;flex-direction:column;gap:18px;min-width:0}
-
-.room{border:4px solid var(--line);background:var(--wall)}
-.room-plate{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 14px;background:var(--wall);font:700 14px/1.4 var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
-.room-plate span:last-child{font-variant-numeric:tabular-nums;letter-spacing:.06em}
-.floor{
-  padding:14px;
-  background:repeating-conic-gradient(var(--floor-a) 0% 25%,var(--floor-b) 0% 50%) 0 0/48px 48px;
+/* Botones de videojuego */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  min-height:44px;padding:8px 14px;
+  font:700 13px/1.2 var(--display);letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink);background:var(--plate);
+  border:3px solid var(--line);box-shadow:0 4px 0 #000;
+  cursor:pointer;touch-action:manipulation;
+  transition:transform .12s ease,box-shadow .12s ease,border-color .2s ease,background-color .2s ease;
 }
-.desks{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.btn:hover{border-color:var(--accent);background:#13202c}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #000}
+.btn svg{width:16px;height:16px;flex:none}
+.btn-oro{color:#1d1404;background:var(--gold);border-color:#000;box-shadow:0 6px 0 #000}
+.btn-oro:hover{background:#ffdc70;border-color:#000;transform:translateY(-2px);box-shadow:0 8px 0 #000}
+.btn-oro:active{transform:translateY(4px);box-shadow:0 2px 0 #000}
 
+/* Título en píxeles */
+.tp{display:block;width:calc(var(--u) * var(--px));max-width:100%;height:auto}
+.tp-sombra{fill:#000}
+.tp-a{fill:#ffe27a}
+.tp-b{fill:#f29f3a}
+
+/* ============ PANTALLA DE INICIO ============ */
+.intro{
+  position:fixed;inset:0;z-index:40;
+  display:flex;flex-direction:column;align-items:center;
+  padding:clamp(20px,6vh,64px) 16px 24px;
+  overflow-x:hidden;overflow-y:auto;
+  background:linear-gradient(#060b14 0%,#0d1830 55%,#16223a 100%);
+  transition:opacity .45s ease;
+}
+.intro.fuera{opacity:0;pointer-events:none}
+.ciudad{position:fixed;inset:0;pointer-events:none}
+.estrellas{position:absolute;top:0;left:0;width:2px;height:2px;animation:titilar 3.4s steps(2,end) infinite}
+.estrellas.e2{width:3px;height:3px;animation-duration:5.2s;animation-delay:-1.3s}
+.luna{
+  position:absolute;top:8%;right:10%;width:36px;height:36px;
+  background:#f4efd6;box-shadow:inset -10px -4px 0 #d6cfae;
+  clip-path:polygon(25% 0,75% 0,75% 8%,92% 8%,92% 25%,100% 25%,100% 75%,92% 75%,92% 92%,75% 92%,75% 100%,25% 100%,25% 92%,8% 92%,8% 75%,0 75%,0 25%,8% 25%,8% 8%,25% 8%);
+}
+.edificio{
+  position:absolute;left:50%;bottom:44px;
+  width:min(600px,94vw);transform:translateX(-50%);
+  padding:18px 14px 0;
+  background:#18222f;
+  background-image:linear-gradient(90deg,rgba(0,0,0,.2) 2px,transparent 2px),linear-gradient(rgba(0,0,0,.2) 2px,transparent 2px);
+  background-size:16px 8px;
+  border:4px solid #0a1018;border-bottom:0;
+}
+.cornisa{position:absolute;left:-14px;right:-14px;top:-16px;height:14px;background:#223042;border:4px solid #0a1018}
+.ventanas{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:clamp(6px,2vw,14px)}
+.vent{position:relative;display:block;aspect-ratio:4/3;background:#0b121b;border:3px solid #0a1018;overflow:hidden;container-type:inline-size}
+.vent::before{content:"";position:absolute;inset:0;background:linear-gradient(#ffe08a,#f2b24a);opacity:0}
+.vent.on::before{opacity:1}
+.vent.parpadea::before{animation:parpadeo var(--t,8s) steps(1,end) infinite var(--d,0s)}
+.vent.enciende::before{animation:encender var(--t,9s) steps(1,end) infinite var(--d,0s)}
+.vent::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:3px;margin-left:-1px;background:#0a1018}
+.sombra{position:absolute;left:0;bottom:0;width:9px;height:13px;background:#5a3a0e;opacity:.6;animation:pasear var(--t2,7s) linear infinite alternate}
+.sombra::before{content:"";position:absolute;left:1px;top:-7px;width:7px;height:7px;background:inherit}
+.entrada{display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:clamp(14px,3vh,26px)}
+.rotulo{
+  padding:5px 6px 5px 10px;
+  font:700 clamp(11px,2.6vw,14px)/1 var(--display);letter-spacing:.3em;
+  color:#ff8fc8;border:3px solid #ff8fc8;
+  text-shadow:0 0 8px rgba(255,120,190,.8);
+  box-shadow:0 0 12px rgba(255,120,190,.35),inset 0 0 8px rgba(255,120,190,.25);
+  animation:neon 6s steps(1,end) infinite;
+}
+.puerta{position:relative;width:clamp(60px,15%,92px);aspect-ratio:3/4;border:4px solid #0a1018;border-bottom:0;background:#1a1206;perspective:320px}
+.puerta .luz{position:absolute;inset:0;background:radial-gradient(closest-side at 50% 70%,#fff6d0,#ffcf4a 55%,#c27a12)}
+.hoja{position:absolute;top:0;bottom:0;width:50%;background:#33495e;border:3px solid #0a1018}
+.hoja::before{content:"";position:absolute;left:18%;right:18%;top:12%;height:38%;background:#7fa7c9;opacity:.55}
+.hoja::after{content:"";position:absolute;top:58%;width:4px;height:8px;background:var(--gold)}
+.hoja.izq{left:0;transform-origin:left center}
+.hoja.izq::after{right:4px}
+.hoja.der{right:0;transform-origin:right center}
+.hoja.der::after{left:4px}
+.calle{position:absolute;left:0;right:0;bottom:0;height:44px;background:#0a0f16;border-top:4px solid #1d2733}
+.calle::before{content:"";position:absolute;left:0;right:0;top:20px;height:3px;background:repeating-linear-gradient(90deg,#3a4656 0 18px,transparent 18px 36px)}
+.paseante{position:absolute;left:0;bottom:30px;animation:cruzar 19s linear infinite}
+.paseante.p2{animation-duration:26s;animation-delay:-11s;animation-direction:reverse}
+.paseante i{position:relative;display:block;width:10px;height:16px;background:#04070b;animation:andar .5s steps(2,end) infinite}
+.paseante i::before{content:"";position:absolute;left:1px;top:-8px;width:8px;height:8px;background:inherit}
+
+.menu{
+  position:relative;z-index:1;
+  width:min(560px,100%);
+  display:flex;flex-direction:column;align-items:center;gap:16px;
+  padding:24px clamp(14px,4vw,28px);
+  text-align:center;
+  background:rgba(8,13,21,.95);
+  border:4px solid var(--line);
+  box-shadow:0 0 0 4px #000,0 14px 0 4px rgba(0,0,0,.4);
+  transition:opacity .35s ease,transform .35s ease;
+}
+.titulo-intro{margin:0;display:flex;flex-direction:column;align-items:center;gap:calc(var(--px) * 2);--px:clamp(3px,1.35vw,9px)}
+.sub{margin:0;max-width:42ch;color:var(--muted);text-wrap:balance}
+.marcador{list-style:none;margin:0;padding:0;width:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.marcador li{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px 8px;background:#060a10;border:3px solid var(--line)}
+.marcador b{font:700 clamp(26px,7vw,36px)/1 var(--display);font-variant-numeric:tabular-nums}
+.marcador li:nth-child(2) b{color:var(--ok)}
+.marcador li:nth-child(3) b{color:var(--warn)}
+.marcador span{font-size:12px;line-height:1.25;color:var(--muted);text-wrap:balance}
+.btn-entrar{width:100%;min-height:56px;font-size:15px}
+.flecha{display:inline-block;animation:empuja 1s steps(2,end) infinite}
+.pulsa{margin:-4px 0 0;font:700 11px/1.3 var(--display);letter-spacing:.18em;text-transform:uppercase;color:var(--muted);animation:blink 1.2s steps(1,end) infinite}
+
+/* Entrada: se abre la puerta y la cámara se mete dentro */
+.intro.entrando .menu{opacity:0;transform:translateY(-14px)}
+.intro.entrando .ciudad{transform:scale(6);transition:transform 1.1s cubic-bezier(.55,0,.9,.35) .3s;will-change:transform}
+.intro.entrando .hoja{transition:transform .7s cubic-bezier(.5,0,.3,1) .1s}
+.intro.entrando .hoja.izq{transform:rotateY(-105deg)}
+.intro.entrando .hoja.der{transform:rotateY(105deg)}
+.intro::after{content:"";position:fixed;inset:0;z-index:2;background:#fff3c4;opacity:0;pointer-events:none}
+.intro.entrando::after{opacity:1;transition:opacity .35s ease 1s}
+
+/* ============ OFICINA ============ */
+.app{
+  max-width:1160px;margin:0 auto;padding:24px 16px 48px;
+  display:flex;flex-direction:column;gap:22px;
+  opacity:0;visibility:hidden;
+  transition:opacity .5s ease,visibility 0s linear .5s;
+}
+.app.dentro{opacity:1;visibility:visible;transition:opacity .5s ease}
+
+.cabecera{display:flex;flex-direction:column;gap:12px}
+.cab-top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px 16px}
+.titulo-oficina{margin:0;line-height:0;--px:2px}
+.titulo-oficina:focus{outline:none}
+.herramientas{display:flex;flex-wrap:wrap;gap:10px}
+.lead{margin:0;max-width:62ch;color:var(--muted)}
+.counts{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:8px;padding:5px 10px;background:var(--plate);border:3px solid var(--line);font:700 12px/1.4 var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.chip b{color:var(--ink);font-size:14px;font-variant-numeric:tabular-nums}
+
+.stage{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:22px;align-items:start}
+.office{display:flex;flex-direction:column;gap:24px;min-width:0}
+
+/* Sala */
+.room{position:relative;overflow:hidden;background:var(--plate);border:4px solid var(--line);box-shadow:0 6px 0 #000}
+.room-plate{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 14px;border-bottom:4px solid var(--line)}
+.room-plate h2{margin:0;font:700 14px/1.3 var(--display);letter-spacing:.14em;text-transform:uppercase}
+.room-plate h2::before{content:"";display:inline-block;width:8px;height:8px;margin-right:10px;background:var(--gold);vertical-align:1px}
+.room-plate span{font:700 12px/1.3 var(--display);letter-spacing:.08em;color:var(--muted);white-space:nowrap}
+
+/* Pared: de día es clara; de noche la oscurece una capa encima (solo cambia su opacidad) */
+.pared{
+  position:relative;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  min-height:108px;padding:20px 14px 12px;
+  background:#b9cad8;
+  background-image:linear-gradient(transparent calc(100% - 12px),#8fa6b8 calc(100% - 12px));
+}
+.pared::after,.floor::after{content:"";position:absolute;inset:0;background:#070d18;opacity:0;pointer-events:none;transition:opacity .8s ease}
+:root[data-tema="noche"] .pared::after{opacity:.74}
+.pared > *{position:relative;z-index:1}
+.pared > .tubo{position:absolute}
+.tubo{top:0;width:24%;height:6px;background:#c9d3da;border:2px solid #5b6b78;border-top:0;transition:background-color .6s ease,box-shadow .6s ease}
+.tubo.t1{left:16%}
+.tubo.t2{right:16%}
+:root[data-tema="noche"] .tubo{background:#fff6d8;box-shadow:0 0 14px 4px rgba(255,236,170,.45)}
+:root[data-tema="noche"] .tubo.t2{animation:tubo 9s steps(1,end) infinite}
+
+.ventana{position:relative;flex:0 0 auto;width:clamp(84px,26%,150px);aspect-ratio:8/5;overflow:hidden;background:#000;border:4px solid #3b4d5d}
+.ventana::before,.ventana::after{content:"";position:absolute;z-index:2;background:#3b4d5d}
+.ventana::before{left:50%;top:0;bottom:0;width:4px;margin-left:-2px}
+.ventana::after{top:50%;left:0;right:0;height:4px;margin-top:-2px}
+.cielo{position:absolute;inset:0;transition:opacity .8s ease}
+.cielo-dia{background:linear-gradient(#5fb4f2,#a9dcff)}
+.cielo-noche{background:linear-gradient(#08122a,#1b2a52);opacity:0}
+:root[data-tema="noche"] .cielo-noche{opacity:1}
+.sol{position:absolute;top:12%;right:12%;width:14px;height:14px;background:#ffd34d;box-shadow:0 0 0 3px rgba(255,211,77,.35)}
+.nube{position:absolute;left:0;width:22px;height:6px;background:#fff;animation:nube 22s linear infinite}
+.nube::before{content:"";position:absolute;left:6px;top:-5px;width:10px;height:5px;background:#fff}
+.nube.n1{top:30%;animation-delay:-6s}
+.nube.n2{top:66%;animation-duration:31s;animation-delay:-19s}
+.luna-p{position:absolute;top:16%;left:14%;width:12px;height:12px;background:#f4efd6;box-shadow:inset -4px -2px 0 #cfc7a6}
+.estr{
+  position:absolute;left:30px;top:8px;width:2px;height:2px;background:#fff;
+  box-shadow:22px 12px #fff,48px 4px #cfe2ff,70px 22px #fff,92px 8px #fff,60px 40px #cfe2ff,12px 34px #fff,104px 36px #fff,-14px 20px #cfe2ff;
+  animation:titilar 3s steps(2,end) infinite;
+}
+.reloj{
+  flex:0 0 auto;padding:7px 9px;
+  font:700 18px/1 var(--display);letter-spacing:.04em;font-variant-numeric:tabular-nums;white-space:nowrap;
+  color:#ff8a5c;background:#07090c;border:3px solid #3b4d5d;
+  text-shadow:0 0 6px rgba(255,138,92,.7);
+}
+.reloj .dp{animation:blink 1s steps(1,end) infinite}
+.objeto{flex:0 0 auto;width:40px}
+.planta{flex:0 0 auto;width:30px;align-self:flex-end;margin-bottom:-4px}
+.objeto svg,.planta svg{display:block;width:100%;height:auto}
+:root[data-tema="noche"] .objeto,:root[data-tema="noche"] .planta{filter:brightness(.72)}
+.pared svg *{transform-box:fill-box}
+.aspas{transform-origin:center;animation:girar .5s linear infinite}
+.hojas-p{transform-origin:50% 100%;animation:mecer 4s ease-in-out infinite alternate}
+.led{animation:latido 1.4s steps(1,end) infinite}
+
+/* Suelo: tarima de día; de noche, capa oscura y luz cálida de los fluorescentes */
+.floor{position:relative;padding:46px 14px 20px;background:repeating-conic-gradient(#c9a074 0% 25%,#c0966a 0% 50%) 0 0/40px 40px}
+.floor::after{z-index:0}
+:root[data-tema="noche"] .floor::after{opacity:.66}
+.floor::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(70% 80% at 50% 0,rgba(255,224,150,.22),transparent 70%);opacity:0;transition:opacity .8s ease}
+:root[data-tema="noche"] .floor::before{opacity:1}
+.desks{position:relative;z-index:2;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:50px 14px}
+
+/* Puesto */
+.puesto{display:flex;min-width:0}
 .desk{
-  display:flex;flex-direction:column;align-items:center;gap:4px;
-  min-width:0;padding:8px 6px 10px;
-  border:3px solid transparent;background:transparent;
-  color:inherit;font:inherit;text-align:center;
+  position:relative;flex:1;min-width:0;
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  padding:0;border:0;background:transparent;text-align:center;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
 }
-button.desk{cursor:pointer}
-button.desk:hover{border-color:var(--muted);background:rgba(11,19,27,.45)}
-button.desk[aria-pressed="true"]{border-color:var(--accent);background:rgba(127,180,255,.14)}
-button.desk:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
-.desk.free{border:2px dashed var(--line);background:rgba(11,19,27,.35)}
-.desk svg{display:block;width:100%;max-width:160px;height:auto}
-.desk .name{font:700 19px/1.2 var(--display)}
-.desk .role{font-size:12px;line-height:1.35;color:var(--muted);text-wrap:balance}
-.desk.free .name{color:var(--muted);font-weight:600;font-size:16px}
+.desk.libre{cursor:default}
+.escena{position:relative;display:block;width:100%;max-width:176px}
+.escena svg{position:relative;display:block;width:100%;height:auto;overflow:visible}
+.escena::before{
+  content:"";position:absolute;left:-8%;right:-8%;top:-6%;bottom:-8%;
+  background:radial-gradient(closest-side,rgba(127,180,255,.55),transparent);
+  opacity:0;pointer-events:none;transition:opacity .25s ease;
+}
+.placa{
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+  width:100%;padding:8px 8px 10px;
+  background:var(--plate);border:3px solid var(--line);box-shadow:0 4px 0 #000;
+  transition:border-color .2s ease;
+}
+.placa .name{font:700 16px/1.2 var(--display);letter-spacing:.04em;overflow-wrap:anywhere}
+.placa .role{font-size:12.5px;line-height:1.35;color:var(--muted);text-wrap:balance}
+.libre .escena{opacity:.8}
+.libre .placa{background:rgba(11,19,27,.82);border-style:dashed}
+.libre .name{color:var(--muted);font-size:14px}
 
-.pill{display:inline-flex;align-items:center;gap:6px;padding:1px 8px 1px 6px;border:2px solid currentColor;font:600 12px/1.5 var(--display);letter-spacing:.06em;text-transform:uppercase}
-.pill i{width:8px;height:8px;background:currentColor;display:block}
+.globo{
+  position:absolute;left:50%;top:6px;z-index:3;
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  width:max-content;max-width:100%;padding:6px 10px;
+  font:700 13px/1.2 var(--display);color:#1a2430;
+  background:#f5f1e6;border:3px solid #000;box-shadow:0 3px 0 rgba(0,0,0,.4);
+  pointer-events:none;opacity:0;
+  transform:translate(-50%,-100%) translateY(6px) scale(.92);transform-origin:50% 100%;
+  transition:opacity .18s ease,transform .18s ease;
+}
+.globo::after{content:"";position:absolute;left:50%;bottom:-10px;width:12px;height:9px;margin-left:-6px;background:#000;clip-path:polygon(0 0,100% 0,50% 100%)}
+.globo::before{content:"";position:absolute;left:50%;bottom:-4px;z-index:1;width:6px;height:4px;margin-left:-3px;background:#f5f1e6;clip-path:polygon(0 0,100% 0,50% 100%)}
+.globo-est{display:inline-flex;align-items:center;gap:5px;font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.globo-est i{width:7px;height:7px;background:currentColor}
+.globo-est.ok{color:#17804f}
+.globo-est.warn{color:#9a5b00}
+.globo-est.off{color:#56636e}
+
+@media (hover:hover){
+  .desk:not(.libre):hover .escena::before{opacity:1}
+  .desk:not(.libre):hover .placa{border-color:var(--accent)}
+  .desk:not(.libre):hover .p-salto{animation:salto .55s cubic-bezier(.3,.7,.4,1)}
+  .desk:not(.libre):hover .globo{opacity:1;transform:translate(-50%,-100%) scale(1)}
+}
+.desk:not(.libre):active .p-salto{animation:salto .55s cubic-bezier(.3,.7,.4,1)}
+.desk:focus-visible{outline:none}
+.desk:focus-visible .placa{outline:3px solid var(--accent);outline-offset:3px}
+.desk:focus-visible .escena::before{opacity:1}
+.desk:focus-visible .globo{opacity:1;transform:translate(-50%,-100%) scale(1)}
+.desk[aria-pressed="true"] .placa{border-color:var(--gold)}
+.desk[aria-pressed="true"] .escena::before{opacity:.8;background:radial-gradient(closest-side,rgba(255,207,74,.45),transparent)}
+
+.pill{display:inline-flex;align-items:center;gap:6px;padding:2px 8px 2px 6px;border:2px solid currentColor;font:700 11.5px/1.5 var(--display);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.pill i{width:8px;height:8px;background:currentColor}
 .pill.ok{color:var(--ok)}
+.pill.ok i{animation:latido 1.6s steps(1,end) infinite}
 .pill.warn{color:var(--warn)}
 .pill.off{color:var(--off)}
 
-/* Dibujo */
+/* Dibujo del trabajador */
 .c-chair{fill:#243645}
 .c-wt{fill:var(--wood-top)}
-.c-wd{fill:var(--wood-dark)}
 .c-w{fill:var(--wood)}
+.c-wd{fill:var(--wood-dark)}
 .c-mon{fill:#0a1118}
-.c-cup{fill:#e9eff3}
-.c-shadow{fill:#000;fill-opacity:.25}
-.c-ghost{fill:#31485a}
 .c-off{fill:#16222d}
-.on .hl,.on .hr{animation:tip .6s steps(1,end) infinite}
-.on .hr{animation-delay:.3s}
-.on .ln{animation:ln 1.8s steps(1,end) infinite}
-@keyframes tip{0%,100%{transform:translateY(0)}50%{transform:translateY(-1px)}}
-@keyframes ln{0%,100%{opacity:.8}50%{opacity:.4}}
-.q{font:700 13px var(--display);fill:var(--muted)}
+.c-cup{fill:#e9eff3}
+.c-shadow{fill:#000;fill-opacity:.28}
+.c-sil{fill:#3d566b}
+.c-ojo{fill:#16171b}
+.q{font:700 9px var(--display);fill:#c3d2de}
+.cartel-txt{font:700 5px var(--display);fill:#111}
+.cartel-txt.claro{fill:#c3d2de}
+.escena svg *,.ficha-avatar svg *{transform-box:fill-box}
+.est-activo .p-resp,.est-en-preparacion .p-resp{animation:respirar 3.2s steps(1,end) infinite;animation-delay:var(--r,0s)}
+.est-en-preparacion .p-resp{opacity:.55}
+.est-por-crear .p-resp{animation:flotar 2.6s ease-in-out infinite alternate}
+.p-ojos{transform-origin:center;animation:parpadear 4.8s linear infinite;animation-delay:var(--r,0s)}
+.est-activo .mano-i{animation:teclear .42s steps(1,end) infinite}
+.est-activo .mano-d{animation:teclear .42s steps(1,end) infinite -.21s}
+.linea{transform-origin:left center;animation:escribir 3.6s steps(6,end) infinite}
+.linea.l2{animation-delay:.5s}
+.linea.l3{animation-delay:1s}
+.brillo-pant{animation:brillo 2.8s ease-in-out infinite alternate}
+.vapor rect{animation:vapor 2.4s ease-out infinite}
+.vapor rect + rect{animation-delay:-1.2s}
+.carga{transform-origin:left center;animation:cargar 3s steps(8,end) infinite}
+.cartel{transform-origin:50% 0;animation:balanceo 2.8s ease-in-out infinite alternate}
+.q{animation:blink 1.6s steps(1,end) infinite}
 
 /* Ficha */
-.panel{
-  position:sticky;top:16px;
-  display:flex;flex-direction:column;gap:14px;
-  padding:18px;border:4px solid var(--line);background:var(--panel);
-  min-width:0;
-}
-.panel-top{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
-.panel-top > div{flex:1 1 150px;min-width:0}
-.back{display:none;align-self:flex-start}
-.panel-top svg{width:112px;flex:none;height:auto;background:rgba(11,19,27,.55);border:2px solid var(--line)}
-.panel-top h2{margin:0;font:700 clamp(22px,6.2vw,28px)/1.1 var(--display);overflow-wrap:anywhere}
-.panel-top p{margin:2px 0 8px;color:var(--muted);font-size:14px}
-.sec{display:flex;flex-direction:column;gap:4px;min-width:0}
-.sec h3{margin:0;font:600 12px/1.4 var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.panel{position:sticky;top:16px;min-width:0;background:var(--panel);border:4px solid var(--line);box-shadow:0 6px 0 #000}
+.ficha{display:flex;flex-direction:column;gap:16px;padding:18px;animation:entra .45s cubic-bezier(.2,.8,.2,1)}
+.hoja-cab{display:none}
+.ficha-top{display:flex;flex-direction:column;gap:14px}
+.ficha-avatar{padding:14px 10px 6px;background:#0b131b;border:3px solid var(--line);background-image:radial-gradient(60% 70% at 50% 40%,rgba(127,180,255,.14),transparent)}
+.ficha-avatar svg{display:block;width:100%;max-width:190px;height:auto;margin:0 auto;overflow:visible}
+.ficha-id{min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+.ficha h2{margin:0;font:700 26px/1.1 var(--display);overflow-wrap:break-word}
+.ficha h2:focus{outline:none}
+.ficha-rol{margin:0;font-size:14px;color:var(--muted)}
+.sec{display:flex;flex-direction:column;gap:6px;min-width:0}
+.sec h3{margin:0;font:700 12px/1.4 var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 .sec p{margin:0}
-.cmd{display:flex;gap:8px;align-items:stretch;flex-wrap:wrap}
-code{font:500 13.5px/1.5 var(--mono);background:#0d1822;border:2px solid var(--line);padding:3px 8px;overflow-wrap:anywhere}
-.cmd code{flex:1 1 160px;min-width:0}
-.btn{font:600 13px/1.4 var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--ink);background:var(--wall);border:2px solid var(--accent);padding:3px 12px;cursor:pointer}
-.btn:hover{background:rgba(127,180,255,.18)}
-.btn:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
-.meta{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--muted);border-top:2px solid var(--line);padding-top:12px}
-.meta b{color:var(--ink);font-weight:500}
+.cmd{display:flex;flex-wrap:wrap;gap:8px}
+code{font:600 14px/1.5 var(--display);color:#bfe3ff;background:#0b131b;border:3px solid var(--line);padding:8px 10px;overflow-wrap:anywhere}
+.cmd code{flex:1 1 160px;min-width:0;display:flex;align-items:center}
+.meta{display:flex;flex-wrap:wrap;gap:8px 28px;margin:0;padding-top:14px;border-top:3px dashed var(--line)}
+.meta div{display:flex;flex-direction:column;gap:2px}
+.meta dt{font:700 11px/1.3 var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.meta dd{margin:0;font-weight:600}
+.vacia p{margin:0}
+.vacia-t{font:700 16px/1.3 var(--display);letter-spacing:.06em;text-transform:uppercase}
+.vacia-t .flecha{color:var(--gold)}
+.leyenda{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.leyenda li{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:13.5px;color:var(--muted)}
+.velo{display:none}
 
-.hint{margin:0;color:var(--muted);font-size:14px;max-width:70ch}
+.hint{margin:0;max-width:70ch;font-size:14px;color:var(--muted)}
 
+/* Aparición al hacer scroll (solo si hay animaciones) */
+.js-anim .reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s cubic-bezier(.2,.8,.2,1);transition-delay:var(--d,0s)}
+.js-anim .reveal.visto{opacity:1;transform:none}
+
+@media (min-width:520px){.titulo-oficina{--px:3px}}
+@media (min-width:1000px){.titulo-oficina{--px:4px}}
+@media (max-width:400px){.objeto{display:none}}
+
+/* Móvil y tableta: la ficha sube desde abajo */
 @media (max-width:860px){
   .stage{grid-template-columns:minmax(0,1fr)}
-  .panel{position:static}
-  .back{display:inline-block}
+  .panel{
+    position:fixed;left:0;right:0;bottom:0;top:auto;z-index:30;
+    max-height:88vh;max-height:88dvh;overflow-y:auto;overscroll-behavior:contain;
+    border-width:4px 0 0;box-shadow:0 -8px 0 rgba(0,0,0,.35);
+    transform:translateY(105%);visibility:hidden;
+    transition:transform .38s cubic-bezier(.2,.8,.2,1),visibility 0s linear .38s;
+  }
+  .panel.abierto{transform:none;visibility:visible;transition:transform .38s cubic-bezier(.2,.8,.2,1)}
+  .panel .ficha{padding-bottom:calc(20px + env(safe-area-inset-bottom))}
+  .panel .vacia{display:none}
+  .hoja-cab{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .agarre{width:48px;height:6px;background:var(--line)}
+  .velo{display:block;position:fixed;inset:0;z-index:29;background:rgba(3,6,10,.62);opacity:0;visibility:hidden;transition:opacity .3s ease,visibility 0s linear .3s}
+  .velo.visible{opacity:1;visibility:visible;transition:opacity .3s ease}
 }
+
+@keyframes titilar{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes parpadeo{0%,100%{opacity:1}58%{opacity:1}60%{opacity:0}78%{opacity:0}80%{opacity:1}}
+@keyframes encender{0%,100%{opacity:0}40%{opacity:0}42%{opacity:1}85%{opacity:1}87%{opacity:0}}
+@keyframes pasear{from{transform:translateX(-10px)}to{transform:translateX(calc(100cqw + 2px))}}
+@keyframes neon{0%,100%{opacity:1}71%{opacity:1}72%{opacity:.35}73%{opacity:1}75%{opacity:.5}76%{opacity:1}}
+@keyframes cruzar{from{transform:translateX(-30px)}to{transform:translateX(calc(100vw + 30px))}}
+@keyframes andar{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+@keyframes empuja{50%{transform:translateX(3px)}}
+@keyframes blink{50%{opacity:0}}
+@keyframes tubo{0%,100%{opacity:1}88%{opacity:1}89%{opacity:.3}90%{opacity:1}91%{opacity:.4}92%{opacity:1}}
+@keyframes nube{from{transform:translateX(-30px)}to{transform:translateX(160px)}}
+@keyframes girar{to{transform:rotate(360deg)}}
+@keyframes mecer{from{transform:rotate(-3deg)}to{transform:rotate(3deg)}}
+@keyframes latido{50%{opacity:.25}}
+@keyframes respirar{0%,100%{transform:translateY(0)}50%{transform:translateY(-1px)}}
+@keyframes flotar{from{transform:translateY(0)}to{transform:translateY(-2px)}}
+@keyframes parpadear{0%,93%,100%{transform:scaleY(1)}95%,97%{transform:scaleY(.1)}}
+@keyframes teclear{0%,100%{transform:translateY(0)}50%{transform:translateY(-1px)}}
+@keyframes salto{0%,100%{transform:translateY(0)}35%{transform:translateY(-7px)}62%{transform:translateY(0)}78%{transform:translateY(-2px)}}
+@keyframes escribir{0%{transform:scaleX(0)}35%,100%{transform:scaleX(1)}}
+@keyframes brillo{from{opacity:.12}to{opacity:.32}}
+@keyframes vapor{0%{transform:translateY(0);opacity:0}25%{opacity:.85}100%{transform:translateY(-6px);opacity:0}}
+@keyframes cargar{from{transform:scaleX(.05)}to{transform:scaleX(1)}}
+@keyframes balanceo{from{transform:rotate(-4deg)}to{transform:rotate(4deg)}}
+@keyframes entra{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}
+
+/* Animaciones desactivadas en el sistema: fuera todas */
 @media (prefers-reduced-motion:reduce){
-  *{animation:none!important;scroll-behavior:auto!important}
+  *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 }
 </style>
 </head>
-<body>
+<body class="bloqueado">
 
-<div class="wrap">
-  <header>
-    <h1>Oficina de agentes</h1>
-    <p class="lead">Cada agente tiene su puesto. Haz clic en un trabajador para ver qué hace, cuál es su comando y qué le falta.</p>
+<section class="intro" id="intro" aria-labelledby="intro-t">
+  <div class="ciudad" id="ciudad" aria-hidden="true">
+    <i class="estrellas" id="e1"></i><i class="estrellas e2" id="e2"></i>
+    <i class="luna"></i>
+    <div class="edificio">
+      <div class="cornisa"></div>
+      <div class="ventanas" id="ventanas"></div>
+      <div class="entrada">
+        <div class="rotulo">OFICINA</div>
+        <div class="puerta" id="puerta"><i class="luz"></i><i class="hoja izq"></i><i class="hoja der"></i></div>
+      </div>
+    </div>
+    <div class="calle"><i class="paseante"><i></i></i><i class="paseante p2"><i></i></i></div>
+  </div>
+
+  <div class="menu">
+    <h1 class="titulo-intro" id="intro-t"><span class="sr">Oficina de agentes</span></h1>
+    <p class="sub">Un equipo de agentes de Claude Code. Cada uno tiene su puesto, su comando y su tarea.</p>
+    <ul class="marcador" aria-label="Resumen de agentes">
+      <li><b data-cuenta="total">0</b><span data-etq="total">Agentes</span></li>
+      <li><b data-cuenta="activo">0</b><span data-etq="activo">Activos</span></li>
+      <li><b data-cuenta="prep">0</b><span>En preparación</span></li>
+    </ul>
+    <button class="btn btn-oro btn-entrar" type="button" id="entrar"><span class="flecha" aria-hidden="true">▶</span> Entrar a la oficina</button>
+    <p class="pulsa" aria-hidden="true">Pulsa el botón o la tecla Intro</p>
+  </div>
+</section>
+
+<div class="app" id="app" inert>
+  <header class="cabecera reveal">
+    <div class="cab-top">
+      <h1 class="titulo-oficina" id="titulo-oficina" tabindex="-1"><span class="sr">Oficina de agentes</span></h1>
+      <div class="herramientas">
+        <button class="btn" type="button" id="tema"></button>
+        <button class="btn" type="button" id="menu-btn"><span aria-hidden="true">◀</span> Menú</button>
+      </div>
+    </div>
+    <p class="lead">Cada agente tiene su puesto. Pulsa un trabajador para ver qué hace y cuál es su comando.</p>
     <div class="counts" id="counts" aria-label="Resumen de agentes"></div>
   </header>
 
   <div class="stage">
     <main class="office" id="office" aria-label="Plano de la oficina"></main>
-    <aside class="panel" id="panel" aria-live="polite" aria-label="Ficha del agente"></aside>
+    <aside class="panel" id="panel" aria-label="Ficha del agente" aria-live="polite"></aside>
   </div>
 
-  <p class="hint">Para sumar un agente nuevo, pídele a Claude «añade el agente X a la oficina». Aparece en su sala con su propio puesto y su ficha.</p>
+  <p class="hint reveal">Para sumar un agente nuevo, pídele a Claude «añade el agente X a la oficina». Aparece en su sala con su propio puesto y su ficha.</p>
 </div>
+<div class="velo" id="velo"></div>
 
 <script>
 /* ============ DATOS: aquí viven tus agentes ============
    Para añadir uno, copia un bloque de AGENTES y cambia sus datos.
    estado: 'activo' | 'en-preparacion' | 'por-crear'
    sala:   el id de una de las SALAS de abajo.
-   libres: cuántos puestos vacíos se muestran en esa sala. */
+   libres: cuántos puestos vacíos se muestran en esa sala.
+   aspecto: colores del muñeco (opcional; si falta, se usan unos por defecto). */
 const SALAS = [
   { id: 'contenido', nombre: 'Sala de contenido', libres: 1 },
   { id: 'mercado',   nombre: 'Sala de mercado',   libres: 1 }
@@ -201,119 +539,235 @@ const ESTADOS = {
 };
 /* ============ FIN DE LOS DATOS ============ */
 
+const ASPECTO_BASE = { piel: '#e0ac86', pelo: '#3b2a20', camisa: '#7fb4ff', pantalla: '#5ad1c0' };
+
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const $ = id => document.getElementById(id);
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const movil = () => matchMedia('(max-width: 860px)').matches;
+const estadoDe = a => ESTADOS[a.estado] ? a.estado : 'por-crear';
+const cuenta = e => AGENTES.filter(a => estadoDe(a) === e).length;
+const pl = (k, uno, varios) => k === 1 ? uno : varios;
+const pill = e => `<span class="pill ${ESTADOS[e].cls}"><i></i>${ESTADOS[e].txt}</span>`;
 
-/* Trabajador en su mesa, dibujado en píxeles. a = null dibuja un puesto libre. */
-function escena(a) {
-  const ghost = a && a.estado === 'por-crear';
-  const on = a && a.estado === 'activo';
-  const ap = a ? a.aspecto : null;
-  const piel = ghost ? 'c-ghost' : '';
-  const f = (cls, color) => ghost ? 'class="c-ghost"' : `style="fill:${color}"`;
-  let persona = '';
-  if (a) {
-    persona = `
-      <rect ${f('', ap.piel)} x="30" y="22" width="4" height="3"/>
-      <rect ${f('', ap.camisa)} x="22" y="24" width="20" height="16"/>
-      <rect ${f('', ap.camisa)} x="18" y="26" width="5" height="14"/>
-      <rect ${f('', ap.camisa)} x="41" y="26" width="5" height="14"/>
-      <rect ${f('', ap.piel)} x="26" y="10" width="12" height="12"/>
-      <rect ${f('', ap.pelo)} x="25" y="8" width="14" height="5"/>
-      <rect ${f('', ap.pelo)} x="25" y="8" width="3" height="11"/>
-      ${ghost ? '' : '<rect x="29" y="16" width="2" height="2" fill="#16171b"/><rect x="34" y="16" width="2" height="2" fill="#16171b"/>'}
-      ${ghost ? '<text class="q" x="32" y="20" text-anchor="middle">?</text>' : ''}`;
+if (!reduced && 'IntersectionObserver' in window) document.documentElement.classList.add('js-anim');
+
+/* ---------- Título en píxeles (letras de 5x7) ---------- */
+const GLIFOS = {
+  A: ['01110','10001','10001','11111','10001','10001','10001'],
+  C: ['01111','10000','10000','10000','10000','10000','01111'],
+  D: ['11110','10001','10001','10001','10001','10001','11110'],
+  E: ['11111','10000','10000','11110','10000','10000','11111'],
+  F: ['11111','10000','10000','11110','10000','10000','10000'],
+  G: ['01111','10000','10000','10011','10001','10001','01111'],
+  I: ['11111','00100','00100','00100','00100','00100','11111'],
+  N: ['10001','11001','10101','10011','10001','10001','10001'],
+  O: ['01110','10001','10001','10001','10001','10001','01110'],
+  S: ['01111','10000','10000','01110','00001','00001','11110'],
+  T: ['11111','00100','00100','00100','00100','00100','00100']
+};
+function tituloPixel(texto) {
+  let x = 0, arriba = '', abajo = '';
+  for (const ch of texto) {
+    const g = GLIFOS[ch];
+    if (!g) { x += 3; continue; }
+    g.forEach((fila, y) => [...fila].forEach((b, i) => {
+      if (b !== '1') return;
+      const d = `M${x + i} ${y}h1v1h-1z`;
+      if (y < 4) arriba += d; else abajo += d;
+    }));
+    x += 6;
   }
-  const hands = a ? `
-      <g class="hl"><rect ${f('', ap.piel)} x="20" y="38" width="5" height="3"/></g>
-      <g class="hr"><rect ${f('', ap.piel)} x="39" y="38" width="5" height="3"/></g>` : '';
-  const screen = a && !ghost
-    ? `<rect style="fill:${ap.pantalla}" x="50" y="24" width="22" height="13"/>
-       <g class="ln" fill="#fff" fill-opacity=".8"><rect x="53" y="27" width="14" height="2"/><rect x="53" y="31" width="10" height="2"/><rect x="53" y="34" width="16" height="2"/></g>`
-    : `<rect class="c-off" x="50" y="24" width="22" height="13"/>`;
-  const cup = a ? '<rect class="c-cup" x="10" y="36" width="5" height="4"/><rect class="c-cup" x="15" y="37" width="2" height="2"/>' : '';
-  const label = a ? `${a.nombre}, ${ESTADOS[a.estado].txt}` : 'Puesto libre';
-  return `<svg class="${on ? 'on' : ''}" viewBox="0 0 80 64" shape-rendering="crispEdges" role="img" aria-label="${esc(label)}">
+  return `<svg class="tp" viewBox="0 0 ${x} 8" style="--u:${x}" shape-rendering="crispEdges" aria-hidden="true" focusable="false">
+    <path class="tp-sombra" transform="translate(1 1)" d="${arriba}${abajo}"/><path class="tp-a" d="${arriba}"/><path class="tp-b" d="${abajo}"/></svg>`;
+}
+
+/* ---------- Iconos y decorado ---------- */
+const ICONO_SOL = '<svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><g fill="#ffcf4a"><rect x="5" y="5" width="6" height="6"/><rect x="7" y="0" width="2" height="3"/><rect x="7" y="13" width="2" height="3"/><rect x="0" y="7" width="3" height="2"/><rect x="13" y="7" width="3" height="2"/><rect x="2" y="2" width="2" height="2"/><rect x="12" y="2" width="2" height="2"/><rect x="2" y="12" width="2" height="2"/><rect x="12" y="12" width="2" height="2"/></g></svg>';
+const ICONO_LUNA = '<svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><path fill="#cfe2ff" d="M6 1h5v2H8v2H7v6h1v2h3v2H6v-1H4v-2H3V4h1V2h2z"/></svg>';
+const VENTILADOR = `<div class="objeto"><svg viewBox="0 0 20 24" shape-rendering="crispEdges">
+  <rect x="5" y="21" width="10" height="3" fill="#5b6b78"/><rect x="9" y="14" width="2" height="7" fill="#5b6b78"/>
+  <path fill="#2b3a47" d="M5 1h10v1h2v2h1v6h-1v2h-2v1H5v-1H3v-2H2V4h1V2h2z"/>
+  <g class="aspas" fill="#d6e2ea"><rect x="9" y="2" width="2" height="11"/><rect x="4" y="6.5" width="12" height="2"/></g>
+  <rect x="9" y="6.5" width="2" height="2" fill="#ff8a5c"/></svg></div>`;
+const CAFETERA = `<div class="objeto"><svg viewBox="0 0 18 22" shape-rendering="crispEdges">
+  <rect x="2" y="2" width="14" height="19" fill="#3a4b5c"/><rect x="1" y="1" width="16" height="3" fill="#2b3845"/>
+  <rect x="5" y="6" width="8" height="4" fill="#0a1118"/><rect x="6" y="7" width="3" height="2" fill="#5ad1c0"/>
+  <rect x="8" y="11" width="2" height="2" fill="#1b2630"/><rect x="6" y="15" width="6" height="4" fill="#e9eff3"/>
+  <rect class="led" x="13" y="12" width="2" height="2" fill="#4cc38a"/><rect x="2" y="20" width="14" height="2" fill="#1b2630"/></svg></div>`;
+const PLANTA = `<div class="planta"><svg viewBox="0 0 16 24" shape-rendering="crispEdges">
+  <g class="hojas-p"><rect x="7" y="3" width="2" height="13" fill="#2f7a45"/><rect x="3" y="7" width="4" height="2" fill="#4cc38a"/>
+  <rect x="2" y="4" width="2" height="4" fill="#4cc38a"/><rect x="9" y="9" width="4" height="2" fill="#3f9a55"/>
+  <rect x="12" y="5" width="2" height="5" fill="#3f9a55"/><rect x="4" y="11" width="3" height="2" fill="#3f9a55"/>
+  <rect x="9" y="1" width="2" height="3" fill="#4cc38a"/><rect x="5" y="0" width="2" height="3" fill="#3f9a55"/></g>
+  <rect x="3" y="15" width="10" height="2" fill="#cf7a4a"/><rect x="4" y="17" width="8" height="7" fill="#b5653a"/></svg></div>`;
+
+const pared = s => `<div class="pared" aria-hidden="true">
+  <i class="tubo t1"></i><i class="tubo t2"></i>
+  <div class="ventana">
+    <div class="cielo cielo-dia"><i class="sol"></i><i class="nube n1"></i><i class="nube n2"></i></div>
+    <div class="cielo cielo-noche"><i class="estr"></i><i class="luna-p"></i></div>
+  </div>
+  <div class="reloj"><span class="hh">00</span><span class="dp">:</span><span class="mm">00</span></div>
+  ${s % 2 ? CAFETERA : VENTILADOR}
+  ${PLANTA}
+</div>`;
+
+/* ---------- Trabajador en su mesa (a = null dibuja un puesto libre) ---------- */
+function escena(a, i = 0) {
+  const est = a ? estadoDe(a) : null;
+  const ap = Object.assign({}, ASPECTO_BASE, a && a.aspecto);
+  const sil = est === 'por-crear';
+  const c = color => sil ? 'class="c-sil"' : `fill="${esc(color)}"`;
+  let persona = '', manos = '', brillo = '', pantalla = '<rect class="c-off" x="50" y="24" width="22" height="13"/>', taza = '', extra = '';
+  if (a) {
+    persona = `<g class="p-salto"><g class="p-resp">
+      <rect ${c(ap.piel)} x="30" y="22" width="4" height="3"/>
+      <rect ${c(ap.camisa)} x="22" y="24" width="20" height="16"/>
+      <rect ${c(ap.camisa)} x="18" y="26" width="5" height="14"/>
+      <rect ${c(ap.camisa)} x="41" y="26" width="5" height="14"/>
+      <rect ${c(ap.piel)} x="26" y="10" width="12" height="12"/>
+      <rect ${c(ap.pelo)} x="25" y="8" width="14" height="5"/>
+      <rect ${c(ap.pelo)} x="25" y="8" width="3" height="11"/>
+      ${sil ? '<text class="q" x="33" y="21" text-anchor="middle">?</text>'
+            : '<g class="p-ojos"><rect class="c-ojo" x="29" y="15" width="2" height="2"/><rect class="c-ojo" x="34" y="15" width="2" height="2"/></g><rect class="c-ojo" x="31" y="19" width="3" height="1" opacity=".5"/>'}
+    </g></g>`;
+    const mano = lado => sil ? `class="mano-${lado} c-sil"` : `class="mano-${lado}" fill="${esc(ap.piel)}"`;
+    manos = `<g class="p-salto"><rect ${mano('i')} x="20" y="38" width="5" height="3"/><rect ${mano('d')} x="39" y="38" width="5" height="3"/></g>`;
+    if (!sil) taza = '<rect class="c-cup" x="10" y="36" width="5" height="4"/><rect class="c-cup" x="15" y="37" width="2" height="2"/>';
+  }
+  if (est === 'activo') {
+    brillo = `<rect class="brillo-pant" fill="${esc(ap.pantalla)}" x="44" y="18" width="34" height="26"/>`;
+    pantalla = `<rect fill="${esc(ap.pantalla)}" x="50" y="24" width="22" height="13"/>
+      <g fill="#fff" fill-opacity=".85"><rect class="linea" x="53" y="27" width="14" height="2"/><rect class="linea l2" x="53" y="31" width="9" height="2"/><rect class="linea l3" x="53" y="34" width="16" height="1"/></g>`;
+    taza += '<g class="vapor" fill="#e9eff3"><rect x="11" y="32" width="1" height="2"/><rect x="13" y="31" width="1" height="2"/></g>';
+  } else if (est === 'en-preparacion') {
+    pantalla += '<rect x="53" y="29" width="16" height="4" fill="#3a2a10"/><rect class="carga" x="54" y="30" width="14" height="2" fill="#f2b14a"/>';
+    let rayas = '';
+    for (let x = 4; x < 76; x += 8) rayas += `<polygon points="${x},51 ${x + 4},47 ${x + 8},47 ${x + 4},51" fill="#f2b14a"/>`;
+    extra = `<rect x="4" y="47" width="72" height="4" fill="#111"/>${rayas}
+      <g><rect x="69" y="48" width="2" height="3" fill="#ff7a2e"/><rect x="68" y="51" width="4" height="3" fill="#f5f1e6"/><rect x="67" y="54" width="6" height="5" fill="#ff7a2e"/><rect x="65" y="59" width="10" height="3" fill="#d9541e"/></g>
+      <g class="cartel"><rect x="23" y="50" width="34" height="10" fill="#f2b14a" stroke="#111" stroke-width="1"/><text class="cartel-txt" x="40" y="57" text-anchor="middle">EN OBRAS</text></g>`;
+  } else if (sil) {
+    extra = '<g class="cartel"><rect x="14" y="49" width="52" height="10" fill="#0b131b" stroke="#8d9ba8" stroke-width="1"/><text class="cartel-txt claro" x="40" y="56" text-anchor="middle">PRÓXIMAMENTE</text></g>';
+  }
+  return `<svg viewBox="0 0 80 64" shape-rendering="crispEdges" aria-hidden="true" focusable="false" style="--r:-${((i * 1.37) % 4).toFixed(2)}s">
     <rect class="c-shadow" x="6" y="61" width="68" height="3"/>
     <rect class="c-chair" x="20" y="20" width="24" height="26"/>
     ${persona}
+    ${brillo}
     <rect class="c-wt" x="4" y="40" width="72" height="6"/>
     <rect class="c-wd" x="6" y="46" width="68" height="12"/>
     <rect class="c-w" x="6" y="46" width="68" height="2"/>
     <rect class="c-wd" x="6" y="58" width="4" height="4"/>
     <rect class="c-wd" x="70" y="58" width="4" height="4"/>
-    ${hands}
+    ${manos}
     <rect class="c-mon" x="48" y="22" width="26" height="18"/>
-    ${screen}
+    ${pantalla}
     <rect class="c-mon" x="56" y="39" width="10" height="2"/>
-    ${cup}
+    ${taza}
+    ${extra}
   </svg>`;
 }
 
-const pill = e => `<span class="pill ${ESTADOS[e].cls}"><i></i>${ESTADOS[e].txt}</span>`;
+/* ---------- Oficina ---------- */
+function puesto(a, i, k) {
+  const e = estadoDe(a), E = ESTADOS[e];
+  return `<div class="puesto reveal" style="--d:${(k * 0.09).toFixed(2)}s">
+    <button class="desk est-${e}" type="button" data-id="${esc(a.id)}" aria-pressed="false" aria-label="${esc(a.nombre)}, ${esc(E.txt.toLowerCase())}. Ver ficha">
+      <span class="globo" aria-hidden="true"><b>${esc(a.nombre)}</b><span class="globo-est ${E.cls}"><i></i>${E.txt}</span></span>
+      <span class="escena">${escena(a, i)}</span>
+      <span class="placa"><span class="name">${esc(a.nombre)}</span><span class="role">${esc(a.rol || '')}</span>${pill(e)}</span>
+    </button>
+  </div>`;
+}
+const puestoLibre = k => `<div class="puesto reveal" style="--d:${(k * 0.09).toFixed(2)}s">
+    <div class="desk libre"><span class="escena">${escena(null)}</span><span class="placa"><span class="name">Puesto libre</span><span class="role">Para un agente nuevo</span></span></div>
+  </div>`;
 
 function pintarOficina() {
-  const office = $('office');
-  office.innerHTML = '';
-  SALAS.forEach(sala => {
+  let n = 0;
+  $('office').innerHTML = SALAS.map((sala, s) => {
     const agentes = AGENTES.filter(a => a.sala === sala.id);
-    const room = document.createElement('section');
-    room.className = 'room';
-    room.setAttribute('aria-label', sala.nombre);
-    const libres = Array.from({ length: sala.libres || 0 }, () => `
-      <div class="desk free">${escena(null)}<span class="name">Puesto libre</span></div>`).join('');
-    room.innerHTML = `
-      <div class="room-plate"><span>${esc(sala.nombre)}</span><span>${agentes.length} ${agentes.length === 1 ? 'agente' : 'agentes'}</span></div>
-      <div class="floor"><div class="desks">
-        ${agentes.map(a => `
-          <button class="desk" type="button" data-id="${esc(a.id)}" aria-pressed="false">
-            ${escena(a)}
-            <span class="name">${esc(a.nombre)}</span>
-            <span class="role">${esc(a.rol)}</span>
-            ${pill(a.estado)}
-          </button>`).join('')}
-        ${libres}
-      </div></div>`;
-    office.appendChild(room);
-  });
-  office.querySelectorAll('button.desk').forEach(b => b.addEventListener('click', () => elegir(b.dataset.id, true)));
+    const puestos = agentes.map((a, k) => puesto(a, n++, k)).join('')
+      + Array.from({ length: sala.libres || 0 }, (_, k) => puestoLibre(agentes.length + k)).join('');
+    return `<section class="room reveal" aria-labelledby="sala-${esc(sala.id)}">
+      <div class="room-plate"><h2 id="sala-${esc(sala.id)}">${esc(sala.nombre)}</h2><span>${agentes.length} ${pl(agentes.length, 'agente', 'agentes')}</span></div>
+      ${pared(s)}
+      <div class="floor"><div class="desks">${puestos}</div></div>
+    </section>`;
+  }).join('');
+  $('office').querySelectorAll('button.desk').forEach(b => b.addEventListener('click', () => elegir(b.dataset.id, b)));
 }
 
 function pintarResumen() {
-  const n = e => AGENTES.filter(a => a.estado === e).length;
   const libres = SALAS.reduce((t, s) => t + (s.libres || 0), 0);
-  const pl = (k, uno, varios) => k === 1 ? uno : varios;
+  const act = cuenta('activo');
   $('counts').innerHTML = `
-    <span class="chip"><b>${n('activo')}</b> ${pl(n('activo'), 'activo', 'activos')}</span>
-    <span class="chip"><b>${n('en-preparacion')}</b> en preparación</span>
-    <span class="chip"><b>${n('por-crear')}</b> por crear</span>
+    <span class="chip"><b>${act}</b> ${pl(act, 'activo', 'activos')}</span>
+    <span class="chip"><b>${cuenta('en-preparacion')}</b> en preparación</span>
+    <span class="chip"><b>${cuenta('por-crear')}</b> por crear</span>
     <span class="chip"><b>${libres}</b> ${pl(libres, 'puesto libre', 'puestos libres')}</span>`;
 }
 
-function elegir(id, deUsuario) {
+function reloj() {
+  const d = new Date();
+  const hh = String(d.getHours()).padStart(2, '0'), mm = String(d.getMinutes()).padStart(2, '0');
+  document.querySelectorAll('.reloj').forEach(r => {
+    r.querySelector('.hh').textContent = hh;
+    r.querySelector('.mm').textContent = mm;
+  });
+}
+
+/* ---------- Ficha del agente ---------- */
+let origen = null;
+function fichaVacia() {
+  $('panel').innerHTML = `<div class="ficha vacia">
+    <p class="vacia-t"><span class="flecha" aria-hidden="true">◀</span> Elige un trabajador</p>
+    <p>Pulsa cualquier puesto para ver su ficha: qué hace, su comando y en qué estado está.</p>
+    <ul class="leyenda">
+      <li>${pill('activo')} Ya trabaja</li>
+      <li>${pill('en-preparacion')} Creado, terminando de prepararse</li>
+      <li>${pill('por-crear')} Puesto reservado</li>
+    </ul>
+  </div>`;
+}
+
+function elegir(id, btn) {
   const a = AGENTES.find(x => x.id === id);
   if (!a) return;
+  origen = btn;
+  const e = estadoDe(a);
   document.querySelectorAll('button.desk').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.id === id)));
-  $('panel').innerHTML = `
-    <div class="panel-top">
-      ${escena(a)}
-      <div><h2>${esc(a.nombre)}</h2><p>${esc(a.rol)}</p>${pill(a.estado)}</div>
+  $('panel').innerHTML = `<div class="ficha">
+    <div class="hoja-cab"><span class="agarre" aria-hidden="true"></span><button class="btn" type="button" id="cerrar">✕ Cerrar</button></div>
+    <div class="ficha-top">
+      <div class="ficha-avatar est-${e}">${escena(a)}</div>
+      <div class="ficha-id"><h2 id="ficha-t" tabindex="-1">${esc(a.nombre)}</h2><p class="ficha-rol">${esc(a.rol || '')}</p>${pill(e)}</div>
     </div>
-    <div class="sec"><h3>Qué hace</h3><p>${esc(a.hace)}</p></div>
-    <div class="sec"><h3>Comando</h3>
-      <div class="cmd"><code id="cmd-txt">${esc(a.comando)}</code><button class="btn" type="button" id="cmd-btn">Copiar</button></div>
-    </div>
-    <div class="meta">
-      <span>Versión: <b>${esc(a.version || 'sin crear')}</b></span>
-      <span>Creado: <b>${esc(a.creado || 'sin crear')}</b></span>
-    </div>
-    <button class="btn back" type="button" id="back">↑ Volver a la oficina</button>`;
-  $('cmd-btn').addEventListener('click', copiar);
-  $('back').addEventListener('click', () => $('office').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' }));
-  if (deUsuario && matchMedia('(max-width: 860px)').matches) {
-    $('panel').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+    <div class="sec"><h3>Qué hace</h3><p>${esc(a.hace || '')}</p></div>
+    ${a.comando ? `<div class="sec"><h3>Comando</h3><div class="cmd"><code id="cmd-txt">${esc(a.comando)}</code><button class="btn" type="button" id="cmd-btn">Copiar</button></div></div>` : ''}
+    <dl class="meta">
+      <div><dt>Versión</dt><dd>${esc(a.version || 'Sin crear')}</dd></div>
+      <div><dt>Creado</dt><dd>${esc(a.creado || 'Sin crear')}</dd></div>
+    </dl>
+  </div>`;
+  if ($('cmd-btn')) $('cmd-btn').addEventListener('click', copiar);
+  $('cerrar').addEventListener('click', () => cerrarFicha(true));
+  if (movil()) {
+    $('panel').classList.add('abierto');
+    $('velo').classList.add('visible');
+    document.body.classList.add('bloqueado');
+    $('ficha-t').focus({ preventScroll: true });
   }
+}
+
+function cerrarFicha(devolverFoco) {
+  const abierta = $('panel').classList.contains('abierto');
+  $('panel').classList.remove('abierto');
+  $('velo').classList.remove('visible');
+  if ($('intro').hidden) document.body.classList.remove('bloqueado');
+  if (abierta && devolverFoco && origen) origen.focus({ preventScroll: true });
 }
 
 function copiar() {
@@ -326,12 +780,145 @@ function copiar() {
   try {
     navigator.clipboard.writeText(el.textContent).then(() => { btn.textContent = 'Copiado'; }, seleccionar);
   } catch (e) { seleccionar(); }
-  setTimeout(() => { btn.textContent = 'Copiar'; }, 2200);
+  setTimeout(() => { if (btn.isConnected) btn.textContent = 'Copiar'; }, 2200);
 }
 
+/* ---------- Día y noche ---------- */
+function temaInicial() {
+  try {
+    const t = localStorage.getItem('oficina-tema');
+    if (t === 'dia' || t === 'noche') return t;
+  } catch (e) {}
+  const h = new Date().getHours();
+  return h >= 8 && h < 20 ? 'dia' : 'noche';
+}
+function ponerTema(t, guardar) {
+  document.documentElement.dataset.tema = t;
+  $('tema').innerHTML = t === 'dia' ? `${ICONO_LUNA} Hacer de noche` : `${ICONO_SOL} Hacer de día`;
+  if (guardar) { try { localStorage.setItem('oficina-tema', t); } catch (e) {} }
+}
+
+/* ---------- Pantalla de inicio ---------- */
+function montarIntro() {
+  $('intro-t').insertAdjacentHTML('beforeend', tituloPixel('OFICINA') + tituloPixel('DE AGENTES'));
+  const total = 24, sombras = new Set();
+  while (sombras.size < 3) sombras.add(Math.floor(Math.random() * total));
+  let html = '';
+  for (let i = 0; i < total; i++) {
+    const r = Math.random();
+    let cls = 'vent';
+    if (sombras.has(i)) cls += ' on';
+    else if (r < .36) cls += ' on parpadea';
+    else if (r < .6) cls += ' enciende';
+    else if (r < .8) cls += ' on';
+    const st = `--t:${(7 + Math.random() * 9).toFixed(1)}s;--d:-${(Math.random() * 12).toFixed(1)}s;--t2:${(5 + Math.random() * 4).toFixed(1)}s`;
+    html += `<i class="${cls}" style="${st}">${sombras.has(i) ? '<i class="sombra"></i>' : ''}</i>`;
+  }
+  $('ventanas').innerHTML = html;
+  const estrellas = n => Array.from({ length: n }, () =>
+    `${Math.round(Math.random() * 1900)}px ${Math.round(Math.random() * 640)}px ${Math.random() < .25 ? '#cfe2ff' : '#fff'}`).join(',');
+  $('e1').style.boxShadow = estrellas(70);
+  $('e2').style.boxShadow = estrellas(30);
+  const tot = AGENTES.length, act = cuenta('activo');
+  document.querySelector('[data-etq="total"]').textContent = pl(tot, 'Agente', 'Agentes');
+  document.querySelector('[data-etq="activo"]').textContent = pl(act, 'Activo', 'Activos');
+}
+
+function contar() {
+  const datos = { total: AGENTES.length, activo: cuenta('activo'), prep: cuenta('en-preparacion') };
+  document.querySelectorAll('[data-cuenta]').forEach(el => {
+    const fin = datos[el.dataset.cuenta];
+    if (reduced || !fin) { el.textContent = fin; return; }
+    el.textContent = '0';
+    const dur = Math.min(1400, 700 + fin * 120);
+    let t0 = null;
+    const paso = t => {
+      if (t0 === null) t0 = t;
+      const p = Math.min(1, (t - t0) / dur);
+      el.textContent = Math.round(fin * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) requestAnimationFrame(paso);
+    };
+    setTimeout(() => requestAnimationFrame(paso), 350);
+    setTimeout(() => { el.textContent = fin; }, 400 + dur);   // por si la pestaña no pinta fotogramas
+  });
+}
+
+let entrando = false;
+function mostrarIntro(enfocar) {
+  cerrarFicha(false);
+  const intro = $('intro');
+  intro.hidden = false;
+  intro.classList.remove('entrando', 'fuera');
+  $('app').classList.remove('dentro');
+  $('app').inert = true;
+  document.body.classList.add('bloqueado');
+  entrando = false;
+  contar();
+  if (enfocar) $('entrar').focus({ preventScroll: true });
+}
+
+function entrar() {
+  if (entrando) return;
+  entrando = true;
+  if (reduced) { abrirOficina(true); return; }
+  const c = $('ciudad').getBoundingClientRect(), p = $('puerta').getBoundingClientRect();
+  $('ciudad').style.transformOrigin = `${p.left + p.width / 2 - c.left}px ${p.top + p.height * 0.55 - c.top}px`;
+  $('intro').classList.add('entrando');
+  setTimeout(() => abrirOficina(true), 1350);
+}
+
+function abrirOficina(enfocar) {
+  const intro = $('intro');
+  $('app').inert = false;
+  $('app').classList.add('dentro');
+  document.body.classList.remove('bloqueado');
+  window.scrollTo(0, 0);
+  if (reduced || !enfocar) { intro.hidden = true; }
+  else {
+    intro.classList.add('fuera');
+    setTimeout(() => { intro.hidden = true; intro.classList.remove('entrando', 'fuera'); }, 460);
+  }
+  if (enfocar) $('titulo-oficina').focus({ preventScroll: true });
+  activarReveal();
+}
+
+let observador = null;
+function activarReveal() {
+  const els = document.querySelectorAll('.reveal:not(.visto)');
+  if (!document.documentElement.classList.contains('js-anim')) { els.forEach(e => e.classList.add('visto')); return; }
+  if (!observador) {
+    observador = new IntersectionObserver(entradas => entradas.forEach(en => {
+      if (!en.isIntersecting) return;
+      en.target.classList.add('visto');
+      observador.unobserve(en.target);
+    }), { rootMargin: '0px 0px -6% 0px', threshold: 0.06 });
+  }
+  els.forEach(e => observador.observe(e));
+}
+
+/* ---------- Arranque ---------- */
+$('titulo-oficina').insertAdjacentHTML('beforeend', tituloPixel('OFICINA DE AGENTES'));
+ponerTema(temaInicial(), false);
+montarIntro();
 pintarResumen();
 pintarOficina();
-elegir(AGENTES[0].id, false);
+fichaVacia();
+reloj();
+setInterval(reloj, 15000);
+
+$('entrar').addEventListener('click', entrar);
+$('menu-btn').addEventListener('click', () => mostrarIntro(true));
+$('tema').addEventListener('click', () => ponerTema(document.documentElement.dataset.tema === 'dia' ? 'noche' : 'dia', true));
+$('velo').addEventListener('click', () => cerrarFicha(true));
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && $('panel').classList.contains('abierto')) cerrarFicha(true);
+  if (e.key === 'Enter' && !$('intro').hidden && !entrando && !e.target.closest('button')) { e.preventDefault(); entrar(); }
+});
+matchMedia('(max-width: 860px)').addEventListener('change', ev => { if (!ev.matches) cerrarFicha(false); });
+
+/* Con #oficina al final de la dirección se entra directamente, sin pantalla de inicio */
+if (location.hash === '#oficina') abrirOficina(false);
+else mostrarIntro(false);
 </script>
 
 </body>

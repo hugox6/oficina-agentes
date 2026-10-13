@@ -31,6 +31,8 @@ Cada ficha lleva solo estos campos:
   - `por-crear` si todavía no existe.
 - `version` y `creado`, por ejemplo `'v1'` y `'13 oct 2026'`; `null` si está por crear.
 - `id`, `nombre`, `sala` y `aspecto`: no los cambies en los agentes que ya existen.
+- Agente nuevo: ponle un `aspecto` con cuatro colores (`piel`, `pelo`, `camisa`, `pantalla`) distintos de los de los demás, para que su muñeco se distinga. Es opcional: si falta, sale con colores por defecto.
+- El resto del archivo (estilos, dibujos y animaciones) es el diseño de la web: no lo toques al actualizar datos.
 
 **La página es pública (está en GitHub).** Las fichas deben ser genéricas. Nunca pongas:
 - nombres de tiendas o empresas de la competencia, reseñas ni precios;
