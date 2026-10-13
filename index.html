@@ -118,11 +118,6 @@ button.desk:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .sec{display:flex;flex-direction:column;gap:4px;min-width:0}
 .sec h3{margin:0;font:600 12px/1.4 var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 .sec p{margin:0}
-.sec ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px}
-.sec li{position:relative;padding-left:20px}
-.sec li::before{content:"";position:absolute;left:2px;top:.5em;width:9px;height:9px;border:2px solid var(--muted)}
-.sec.todo li::before{border-color:var(--warn)}
-.sec.warn li::before{background:var(--warn);border-color:var(--warn)}
 .cmd{display:flex;gap:8px;align-items:stretch;flex-wrap:wrap}
 code{font:500 13.5px/1.5 var(--mono);background:#0d1822;border:2px solid var(--line);padding:3px 8px;overflow-wrap:anywhere}
 .cmd code{flex:1 1 160px;min-width:0}
@@ -182,40 +177,19 @@ const AGENTES = [
     version: 'v1',
     creado: '12 oct 2026',
     comando: '/transcribir <enlace>',
-    carpeta: 'Documents\\carpetas-claude\\agente-transcripciones',
-    hace: 'Coge los subtítulos de un vídeo de YouTube y guarda la transcripción como archivo, ordenada por canal.',
-    recibe: ['Un enlace de un vídeo de YouTube'],
-    entrega: ['Un archivo .md por vídeo, con título, canal, enlace, fecha, duración y el texto con el minuto en cada párrafo'],
-    pendiente: [
-      'Probarlo con un vídeo en español con subtítulos automáticos',
-      'Ampliarlo: resúmenes, infografías y otras plataformas'
-    ],
-    avisos: ['Nunca le des tu cuenta de YouTube ni tus cookies.'],
+    hace: 'Pasa a texto lo que se dice en vídeos de YouTube, de uno en uno o por listas, y los ordena por temas. Con esas transcripciones prepara guías y resúmenes.',
     aspecto: { piel: '#e0ac86', pelo: '#3b2a20', camisa: '#4f8fe0', pantalla: '#5ad1c0' }
   },
   {
     id: 'investigador',
     nombre: 'Investigador',
-    rol: 'Competencia y proveedores de tattoo supply',
+    rol: 'Investigación de mercado',
     sala: 'mercado',
-    estado: 'por-crear',
-    version: null,
-    creado: null,
+    estado: 'en-preparacion',
+    version: 'v1',
+    creado: '13 oct 2026',
     comando: '/investigar',
-    carpeta: 'agente-investigacion',
-    hace: 'Investigará en internet la competencia de tattoo supply en España y las marcas y proveedores de material, con datos que se puedan comprobar. Es una petición de Ivan.',
-    recibe: ['La orden /investigar'],
-    entrega: [
-      'competencia.csv: tiendas con reseñas, precio de una cesta de 10 productos, envíos y condiciones',
-      'proveedores.csv: marcas con su contacto de empresa',
-      'informe.md: top 3 con la fórmula de puntuación a la vista'
-    ],
-    pendiente: [
-      'Crearlo en Claude Code',
-      'Probarlo con 5 tiendas',
-      'Revisar que la cesta de precios y las reseñas salen bien'
-    ],
-    avisos: ['La facturación real casi seguro no es pública: el top 3 saldrá como estimación.'],
+    hace: 'Investiga en internet un mercado y sus proveedores, y prepara un informe en el que cada dato lleva su fuente.',
     aspecto: { piel: '#c68a62', pelo: '#1d1d22', camisa: '#e0814f', pantalla: '#f2b14a' }
   }
 ];
@@ -317,9 +291,6 @@ function pintarResumen() {
     <span class="chip"><b>${libres}</b> ${pl(libres, 'puesto libre', 'puestos libres')}</span>`;
 }
 
-const lista = (t, items, cls = '') => items && items.length
-  ? `<div class="sec ${cls}"><h3>${t}</h3><ul>${items.map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>` : '';
-
 function elegir(id, deUsuario) {
   const a = AGENTES.find(x => x.id === id);
   if (!a) return;
@@ -333,11 +304,6 @@ function elegir(id, deUsuario) {
     <div class="sec"><h3>Comando</h3>
       <div class="cmd"><code id="cmd-txt">${esc(a.comando)}</code><button class="btn" type="button" id="cmd-btn">Copiar</button></div>
     </div>
-    <div class="sec"><h3>Dónde vive</h3><code>${esc(a.carpeta)}</code></div>
-    ${lista('Recibe', a.recibe)}
-    ${lista('Entrega', a.entrega)}
-    ${lista('Pendiente', a.pendiente, 'todo')}
-    ${lista('Ojo con', a.avisos, 'warn')}
     <div class="meta">
       <span>Versión: <b>${esc(a.version || 'sin crear')}</b></span>
       <span>Creado: <b>${esc(a.creado || 'sin crear')}</b></span>
