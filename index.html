@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Oficina de agentes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Pixelify+Sans:wght@400;600;700&display=swap">
+<style>
+body{margin:0}
+/* Concepto: planta de oficina vista de frente, con una sala por área. Cada agente es un trabajador en su mesa y el panel lateral es su ficha. Look de videojuego fijo (sin modo claro) a propósito. */
+:root{
+  --bg:#101b25;
+  --wall:#0b131b;
+  --floor-a:#1b2f3e;
+  --floor-b:#1f3647;
+  --line:#2c4558;
+  --panel:#162533;
+  --ink:#e9eff3;
+  --muted:#93a8b8;
+  --accent:#7fb4ff;
+  --ok:#4cc38a;
+  --warn:#f2b14a;
+  --off:#7d8c99;
+  --wood-top:#c58a4e;
+  --wood:#a8703c;
+  --wood-dark:#7d5028;
+  --display:"Pixelify Sans","Courier New",monospace;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font:15px/1.55 var(--body);
+  padding-inline:16px;
+  padding-block:28px 40px;
+}
+.wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+
+/* Cabecera */
+header{display:flex;flex-direction:column;gap:10px}
+h1{margin:0;font:700 clamp(30px,6vw,44px)/1.05 var(--display);letter-spacing:.01em;text-wrap:balance}
+.lead{margin:0;max-width:60ch;color:var(--muted)}
+.counts{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.chip{display:inline-flex;align-items:center;gap:8px;padding:4px 10px;border:2px solid var(--line);background:var(--wall);font:600 13px/1.4 var(--display);letter-spacing:.04em}
+.chip b{font-variant-numeric:tabular-nums}
+
+/* Escenario */
+.stage{display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:20px;align-items:start}
+.office{display:flex;flex-direction:column;gap:18px;min-width:0}
+
+.room{border:4px solid var(--line);background:var(--wall)}
+.room-plate{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 14px;background:var(--wall);font:700 14px/1.4 var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.room-plate span:last-child{font-variant-numeric:tabular-nums;letter-spacing:.06em}
+.floor{
+  padding:14px;
+  background:repeating-conic-gradient(var(--floor-a) 0% 25%,var(--floor-b) 0% 50%) 0 0/48px 48px;
+}
+.desks{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+
+.desk{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  min-width:0;padding:8px 6px 10px;
+  border:3px solid transparent;background:transparent;
+  color:inherit;font:inherit;text-align:center;
+}
+button.desk{cursor:pointer}
+button.desk:hover{border-color:var(--muted);background:rgba(11,19,27,.45)}
+button.desk[aria-pressed="true"]{border-color:var(--accent);background:rgba(127,180,255,.14)}
+button.desk:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.desk.free{border:2px dashed var(--line);background:rgba(11,19,27,.35)}
+.desk svg{display:block;width:100%;max-width:160px;height:auto}
+.desk .name{font:700 19px/1.2 var(--display)}
+.desk .role{font-size:12px;line-height:1.35;color:var(--muted);text-wrap:balance}
+.desk.free .name{color:var(--muted);font-weight:600;font-size:16px}
+
+.pill{display:inline-flex;align-items:center;gap:6px;padding:1px 8px 1px 6px;border:2px solid currentColor;font:600 12px/1.5 var(--display);letter-spacing:.06em;text-transform:uppercase}
+.pill i{width:8px;height:8px;background:currentColor;display:block}
+.pill.ok{color:var(--ok)}
+.pill.warn{color:var(--warn)}
+.pill.off{color:var(--off)}
+
+/* Dibujo */
+.c-chair{fill:#243645}
+.c-wt{fill:var(--wood-top)}
+.c-wd{fill:var(--wood-dark)}
+.c-w{fill:var(--wood)}
+.c-mon{fill:#0a1118}
+.c-cup{fill:#e9eff3}
+.c-shadow{fill:#000;fill-opacity:.25}
+.c-ghost{fill:#31485a}
+.c-off{fill:#16222d}
+.on .hl,.on .hr{animation:tip .6s steps(1,end) infinite}
+.on .hr{animation-delay:.3s}
+.on .ln{animation:ln 1.8s steps(1,end) infinite}
+@keyframes tip{0%,100%{transform:translateY(0)}50%{transform:translateY(-1px)}}
+@keyframes ln{0%,100%{opacity:.8}50%{opacity:.4}}
+.q{font:700 13px var(--display);fill:var(--muted)}
+
+/* Ficha */
+.panel{
+  position:sticky;top:16px;
+  display:flex;flex-direction:column;gap:14px;
+  padding:18px;border:4px solid var(--line);background:var(--panel);
+  min-width:0;
+}
+.panel-top{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
+.panel-top > div{flex:1 1 150px;min-width:0}
+.back{display:none;align-self:flex-start}
+.panel-top svg{width:112px;flex:none;height:auto;background:rgba(11,19,27,.55);border:2px solid var(--line)}
+.panel-top h2{margin:0;font:700 clamp(22px,6.2vw,28px)/1.1 var(--display);overflow-wrap:anywhere}
+.panel-top p{margin:2px 0 8px;color:var(--muted);font-size:14px}
+.sec{display:flex;flex-direction:column;gap:4px;min-width:0}
+.sec h3{margin:0;font:600 12px/1.4 var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.sec p{margin:0}
+.sec ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px}
+.sec li{position:relative;padding-left:20px}
+.sec li::before{content:"";position:absolute;left:2px;top:.5em;width:9px;height:9px;border:2px solid var(--muted)}
+.sec.todo li::before{border-color:var(--warn)}
+.sec.warn li::before{background:var(--warn);border-color:var(--warn)}
+.cmd{display:flex;gap:8px;align-items:stretch;flex-wrap:wrap}
+code{font:500 13.5px/1.5 var(--mono);background:#0d1822;border:2px solid var(--line);padding:3px 8px;overflow-wrap:anywhere}
+.cmd code{flex:1 1 160px;min-width:0}
+.btn{font:600 13px/1.4 var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--ink);background:var(--wall);border:2px solid var(--accent);padding:3px 12px;cursor:pointer}
+.btn:hover{background:rgba(127,180,255,.18)}
+.btn:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.meta{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--muted);border-top:2px solid var(--line);padding-top:12px}
+.meta b{color:var(--ink);font-weight:500}
+
+.hint{margin:0;color:var(--muted);font-size:14px;max-width:70ch}
+
+@media (max-width:860px){
+  .stage{grid-template-columns:minmax(0,1fr)}
+  .panel{position:static}
+  .back{display:inline-block}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;scroll-behavior:auto!important}
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Oficina de agentes</h1>
+    <p class="lead">Cada agente tiene su puesto. Haz clic en un trabajador para ver qué hace, cuál es su comando y qué le falta.</p>
+    <div class="counts" id="counts" aria-label="Resumen de agentes"></div>
+  </header>
+
+  <div class="stage">
+    <main class="office" id="office" aria-label="Plano de la oficina"></main>
+    <aside class="panel" id="panel" aria-live="polite" aria-label="Ficha del agente"></aside>
+  </div>
+
+  <p class="hint">Para sumar un agente nuevo, pídele a Claude «añade el agente X a la oficina». Aparece en su sala con su propio puesto y su ficha.</p>
+</div>
+
+<script>
+/* ============ DATOS: aquí viven tus agentes ============
+   Para añadir uno, copia un bloque de AGENTES y cambia sus datos.
+   estado: 'activo' | 'en-preparacion' | 'por-crear'
+   sala:   el id de una de las SALAS de abajo.
+   libres: cuántos puestos vacíos se muestran en esa sala. */
+const SALAS = [
+  { id: 'contenido', nombre: 'Sala de contenido', libres: 1 },
+  { id: 'mercado',   nombre: 'Sala de mercado',   libres: 1 }
+];
+
+const AGENTES = [
+  {
+    id: 'transcriptor',
+    nombre: 'Transcriptor',
+    rol: 'Transcribe vídeos de YouTube',
+    sala: 'contenido',
+    estado: 'activo',
+    version: 'v1',
+    creado: '12 oct 2026',
+    comando: '/transcribir <enlace>',
+    carpeta: 'Documents\\carpetas-claude\\agente-transcripciones',
+    hace: 'Coge los subtítulos de un vídeo de YouTube y guarda la transcripción como archivo, ordenada por canal.',
+    recibe: ['Un enlace de un vídeo de YouTube'],
+    entrega: ['Un archivo .md por vídeo, con título, canal, enlace, fecha, duración y el texto con el minuto en cada párrafo'],
+    pendiente: [
+      'Probarlo con un vídeo en español con subtítulos automáticos',
+      'Ampliarlo: resúmenes, infografías y otras plataformas'
+    ],
+    avisos: ['Nunca le des tu cuenta de YouTube ni tus cookies.'],
+    aspecto: { piel: '#e0ac86', pelo: '#3b2a20', camisa: '#4f8fe0', pantalla: '#5ad1c0' }
+  },
+  {
+    id: 'investigador',
+    nombre: 'Investigador',
+    rol: 'Competencia y proveedores de tattoo supply',
+    sala: 'mercado',
+    estado: 'por-crear',
+    version: null,
+    creado: null,
+    comando: '/investigar',
+    carpeta: 'agente-investigacion',
+    hace: 'Investigará en internet la competencia de tattoo supply en España y las marcas y proveedores de material, con datos que se puedan comprobar. Es una petición de Ivan.',
+    recibe: ['La orden /investigar'],
+    entrega: [
+      'competencia.csv: tiendas con reseñas, precio de una cesta de 10 productos, envíos y condiciones',
+      'proveedores.csv: marcas con su contacto de empresa',
+      'informe.md: top 3 con la fórmula de puntuación a la vista'
+    ],
+    pendiente: [
+      'Crearlo en Claude Code',
+      'Probarlo con 5 tiendas',
+      'Revisar que la cesta de precios y las reseñas salen bien'
+    ],
+    avisos: ['La facturación real casi seguro no es pública: el top 3 saldrá como estimación.'],
+    aspecto: { piel: '#c68a62', pelo: '#1d1d22', camisa: '#e0814f', pantalla: '#f2b14a' }
+  }
+];
+
+const ESTADOS = {
+  'activo':         { txt: 'Activo',          cls: 'ok'   },
+  'en-preparacion': { txt: 'En preparación',  cls: 'warn' },
+  'por-crear':      { txt: 'Por crear',       cls: 'off'  }
+};
+/* ============ FIN DE LOS DATOS ============ */
+
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $ = id => document.getElementById(id);
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* Trabajador en su mesa, dibujado en píxeles. a = null dibuja un puesto libre. */
+function escena(a) {
+  const ghost = a && a.estado === 'por-crear';
+  const on = a && a.estado === 'activo';
+  const ap = a ? a.aspecto : null;
+  const piel = ghost ? 'c-ghost' : '';
+  const f = (cls, color) => ghost ? 'class="c-ghost"' : `style="fill:${color}"`;
+  let persona = '';
+  if (a) {
+    persona = `
+      <rect ${f('', ap.piel)} x="30" y="22" width="4" height="3"/>
+      <rect ${f('', ap.camisa)} x="22" y="24" width="20" height="16"/>
+      <rect ${f('', ap.camisa)} x="18" y="26" width="5" height="14"/>
+      <rect ${f('', ap.camisa)} x="41" y="26" width="5" height="14"/>
+      <rect ${f('', ap.piel)} x="26" y="10" width="12" height="12"/>
+      <rect ${f('', ap.pelo)} x="25" y="8" width="14" height="5"/>
+      <rect ${f('', ap.pelo)} x="25" y="8" width="3" height="11"/>
+      ${ghost ? '' : '<rect x="29" y="16" width="2" height="2" fill="#16171b"/><rect x="34" y="16" width="2" height="2" fill="#16171b"/>'}
+      ${ghost ? '<text class="q" x="32" y="20" text-anchor="middle">?</text>' : ''}`;
+  }
+  const hands = a ? `
+      <g class="hl"><rect ${f('', ap.piel)} x="20" y="38" width="5" height="3"/></g>
+      <g class="hr"><rect ${f('', ap.piel)} x="39" y="38" width="5" height="3"/></g>` : '';
+  const screen = a && !ghost
+    ? `<rect style="fill:${ap.pantalla}" x="50" y="24" width="22" height="13"/>
+       <g class="ln" fill="#fff" fill-opacity=".8"><rect x="53" y="27" width="14" height="2"/><rect x="53" y="31" width="10" height="2"/><rect x="53" y="34" width="16" height="2"/></g>`
+    : `<rect class="c-off" x="50" y="24" width="22" height="13"/>`;
+  const cup = a ? '<rect class="c-cup" x="10" y="36" width="5" height="4"/><rect class="c-cup" x="15" y="37" width="2" height="2"/>' : '';
+  const label = a ? `${a.nombre}, ${ESTADOS[a.estado].txt}` : 'Puesto libre';
+  return `<svg class="${on ? 'on' : ''}" viewBox="0 0 80 64" shape-rendering="crispEdges" role="img" aria-label="${esc(label)}">
+    <rect class="c-shadow" x="6" y="61" width="68" height="3"/>
+    <rect class="c-chair" x="20" y="20" width="24" height="26"/>
+    ${persona}
+    <rect class="c-wt" x="4" y="40" width="72" height="6"/>
+    <rect class="c-wd" x="6" y="46" width="68" height="12"/>
+    <rect class="c-w" x="6" y="46" width="68" height="2"/>
+    <rect class="c-wd" x="6" y="58" width="4" height="4"/>
+    <rect class="c-wd" x="70" y="58" width="4" height="4"/>
+    ${hands}
+    <rect class="c-mon" x="48" y="22" width="26" height="18"/>
+    ${screen}
+    <rect class="c-mon" x="56" y="39" width="10" height="2"/>
+    ${cup}
+  </svg>`;
+}
+
+const pill = e => `<span class="pill ${ESTADOS[e].cls}"><i></i>${ESTADOS[e].txt}</span>`;
+
+function pintarOficina() {
+  const office = $('office');
+  office.innerHTML = '';
+  SALAS.forEach(sala => {
+    const agentes = AGENTES.filter(a => a.sala === sala.id);
+    const room = document.createElement('section');
+    room.className = 'room';
+    room.setAttribute('aria-label', sala.nombre);
+    const libres = Array.from({ length: sala.libres || 0 }, () => `
+      <div class="desk free">${escena(null)}<span class="name">Puesto libre</span></div>`).join('');
+    room.innerHTML = `
+      <div class="room-plate"><span>${esc(sala.nombre)}</span><span>${agentes.length} ${agentes.length === 1 ? 'agente' : 'agentes'}</span></div>
+      <div class="floor"><div class="desks">
+        ${agentes.map(a => `
+          <button class="desk" type="button" data-id="${esc(a.id)}" aria-pressed="false">
+            ${escena(a)}
+            <span class="name">${esc(a.nombre)}</span>
+            <span class="role">${esc(a.rol)}</span>
+            ${pill(a.estado)}
+          </button>`).join('')}
+        ${libres}
+      </div></div>`;
+    office.appendChild(room);
+  });
+  office.querySelectorAll('button.desk').forEach(b => b.addEventListener('click', () => elegir(b.dataset.id, true)));
+}
+
+function pintarResumen() {
+  const n = e => AGENTES.filter(a => a.estado === e).length;
+  const libres = SALAS.reduce((t, s) => t + (s.libres || 0), 0);
+  const pl = (k, uno, varios) => k === 1 ? uno : varios;
+  $('counts').innerHTML = `
+    <span class="chip"><b>${n('activo')}</b> ${pl(n('activo'), 'activo', 'activos')}</span>
+    <span class="chip"><b>${n('en-preparacion')}</b> en preparación</span>
+    <span class="chip"><b>${n('por-crear')}</b> por crear</span>
+    <span class="chip"><b>${libres}</b> ${pl(libres, 'puesto libre', 'puestos libres')}</span>`;
+}
+
+const lista = (t, items, cls = '') => items && items.length
+  ? `<div class="sec ${cls}"><h3>${t}</h3><ul>${items.map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>` : '';
+
+function elegir(id, deUsuario) {
+  const a = AGENTES.find(x => x.id === id);
+  if (!a) return;
+  document.querySelectorAll('button.desk').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.id === id)));
+  $('panel').innerHTML = `
+    <div class="panel-top">
+      ${escena(a)}
+      <div><h2>${esc(a.nombre)}</h2><p>${esc(a.rol)}</p>${pill(a.estado)}</div>
+    </div>
+    <div class="sec"><h3>Qué hace</h3><p>${esc(a.hace)}</p></div>
+    <div class="sec"><h3>Comando</h3>
+      <div class="cmd"><code id="cmd-txt">${esc(a.comando)}</code><button class="btn" type="button" id="cmd-btn">Copiar</button></div>
+    </div>
+    <div class="sec"><h3>Dónde vive</h3><code>${esc(a.carpeta)}</code></div>
+    ${lista('Recibe', a.recibe)}
+    ${lista('Entrega', a.entrega)}
+    ${lista('Pendiente', a.pendiente, 'todo')}
+    ${lista('Ojo con', a.avisos, 'warn')}
+    <div class="meta">
+      <span>Versión: <b>${esc(a.version || 'sin crear')}</b></span>
+      <span>Creado: <b>${esc(a.creado || 'sin crear')}</b></span>
+    </div>
+    <button class="btn back" type="button" id="back">↑ Volver a la oficina</button>`;
+  $('cmd-btn').addEventListener('click', copiar);
+  $('back').addEventListener('click', () => $('office').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' }));
+  if (deUsuario && matchMedia('(max-width: 860px)').matches) {
+    $('panel').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+  }
+}
+
+function copiar() {
+  const el = $('cmd-txt'), btn = $('cmd-btn');
+  const seleccionar = () => {
+    const r = document.createRange(); r.selectNodeContents(el);
+    const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    btn.textContent = 'Selecciónalo y copia';
+  };
+  try {
+    navigator.clipboard.writeText(el.textContent).then(() => { btn.textContent = 'Copiado'; }, seleccionar);
+  } catch (e) { seleccionar(); }
+  setTimeout(() => { btn.textContent = 'Copiar'; }, 2200);
+}
+
+pintarResumen();
+pintarOficina();
+elegir(AGENTES[0].id, false);
+</script>
+
+</body>
+</html>
